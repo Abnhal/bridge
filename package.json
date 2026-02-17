@@ -1,7 +1,7 @@
 {
   "name": "bridge-monitor",
   "version": "1.0.0",
-  "description": "نظام مراقبة اهتزازات الجسور",
+  "description": "نظام مراقبة الجسور",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
