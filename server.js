@@ -14,8 +14,10 @@ const THRESHOLD_CRITICAL = 2.0;
 const OFFLINE_TIMEOUT = 10000;
 
 app.use(express.json());
-app.use(express.static('public'));
-
+app.use(express.static(__dirname));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 if (!fs.existsSync('data')) {
     fs.mkdirSync('data');
 }
@@ -314,3 +316,4 @@ server.listen(PORT, '0.0.0.0', () => {
     ================================
     `);
 });
+
