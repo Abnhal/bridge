@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // 🔴 هذا السطر مهم للسيرفر الخارجي
 const THRESHOLD_WARNING = 1.5;
 const THRESHOLD_CRITICAL = 2.0;
 const OFFLINE_TIMEOUT = 10000;
@@ -159,7 +159,6 @@ app.get('/api/bridges/:id', (req, res) => {
                     regionName: region.name
                 });
             }
-        }
     }
     
     res.status(404).json({ error: 'الجسر غير موجود' });
@@ -376,7 +375,7 @@ server.listen(PORT, '0.0.0.0', () => {
     ================================
     🌉 نظام مراقبة الجسور
     ================================
-    📡 http://localhost:${PORT}
+    📡 الخادم يعمل على المنفذ: ${PORT}
     🌍 المناطق: ${bridges.filter(b => b.type === 'region').length}
     ================================
     `);
