@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إضافة منطقة جديدة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>➕ إضافة منطقة جديدة</h1>
+        <p>أضف منطقة أو مدينة جديدة لتجميع الجسور</p>
+
+        <div class="form-group">
+            <label>اسم المنطقة</label>
+            <input type="text" id="regionName" placeholder="مثال: منطقة تبوك" autocomplete="off">
+        </div>
+
+        <div class="buttons">
+            <button class="btn btn-secondary" onclick="window.location.href='/'">إلغاء</button>
+            <button class="btn btn-primary" onclick="addRegion()">إضافة</button>
+        </div>
+    </div>
+
+    <script>
+        async function addRegion() {
+            const name = document.getElementById('regionName').value.trim();
+            
+            if (!name) {
+                alert('الرجاء إدخال اسم المنطقة');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/regions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (res.ok) {
+                    alert('✅ تم إضافة المنطقة');
+                    window.location.href = '/';
+                } else {
+                    alert('❌ حدث خطأ');
+                }
+            } catch (err) {
+                alert('❌ فشل الاتصال بالخادم');
+            }
+        }
+    </script>
+</body>
+</html>

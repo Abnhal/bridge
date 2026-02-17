@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إضافة جسر جديد</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        select {
+            background: white;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+        }
+
+        .hint {
+            color: #999;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>🌉 إضافة جسر جديد</h1>
+        <p>أضف جسراً جديداً إلى إحدى المناطق</p>
+
+        <div class="form-group">
+            <label>المنطقة</label>
+            <select id="regionSelect">
+                <option value="">جاري تحميل المناطق...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>اسم الجسر</label>
+            <input type="text" id="bridgeName" placeholder="مثال: جسر وادي البيض">
+        </div>
+
+        <div class="form-group">
+            <label>الموقع (اختياري)</label>
+            <input type="text" id="bridgeLocation" placeholder="مثال: تبوك - وادي البيض">
+            <div class="hint">وصف دقيق لموقع الجسر</div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn btn-secondary" onclick="window.location.href='/'">إلغاء</button>
+            <button class="btn btn-primary" onclick="addBridge()">إضافة</button>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            loadRegions();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const regionId = urlParams.get('regionId');
+            if (regionId) {
+                setTimeout(() => {
+                    document.getElementById('regionSelect').value = regionId;
+                }, 500);
+            }
+        };
+
+        async function loadRegions() {
+            try {
+                const res = await fetch('/api/regions/list');
+                const regions = await res.json();
+                
+                const select = document.getElementById('regionSelect');
+                
+                if (regions.length === 0) {
+                    select.innerHTML = '<option value="">لا توجد مناطق</option>';
+                } else {
+                    select.innerHTML = '<option value="">-- اختر المنطقة --</option>' +
+                        regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                }
+            } catch (err) {
+                document.getElementById('regionSelect').innerHTML = '<option value="">خطأ في التحميل</option>';
+            }
+        }
+
+        async function addBridge() {
+            const regionId = document.getElementById('regionSelect').value;
+            const name = document.getElementById('bridgeName').value.trim();
+            
+            if (!regionId) {
+                alert('الرجاء اختيار المنطقة');
+                return;
+            }
+
+            if (!name) {
+                alert('الرجاء إدخال اسم الجسر');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/bridges', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        location: document.getElementById('bridgeLocation').value.trim(),
+                        regionId: regionId
+                    })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert('✅ تم إضافة الجسر');
+                    window.location.href = `bridge.html?id=${data.bridge.id}`;
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (err) {
+                alert('❌ فشل الاتصال بالخادم');
+            }
+        }
+    </script>
+</body>
+</html>
