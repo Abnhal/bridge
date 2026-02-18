@@ -274,18 +274,26 @@
                                     </button>
                                 </div>
                             ` : region.bridges.map(bridge => {
+                                // تحديد حالة البطاقة بناءً على آخر قراءة
                                 let statusClass = 'offline';
                                 let statusText = 'غير متصل';
                                 
                                 if (bridge.status === 'online') {
-                                    if (bridge.alerts && bridge.alerts.length > 0) {
-                                        const lastAlert = bridge.alerts[0];
-                                        if (lastAlert.severity === 'critical') {
-                                            statusClass = 'critical';
-                                            statusText = 'خطر';
+                                    // إذا في قراءات، نحدد الحالة من آخر قراءة
+                                    if (bridge.readings && bridge.readings.length > 0) {
+                                        const lastReading = bridge.readings[bridge.readings.length - 1];
+                                        
+                                        if (lastReading.alert === true) {
+                                            if (lastReading.severity === 'critical') {
+                                                statusClass = 'critical';
+                                                statusText = 'خطر';
+                                            } else if (lastReading.severity === 'warning') {
+                                                statusClass = 'warning';
+                                                statusText = 'تحذير';
+                                            }
                                         } else {
-                                            statusClass = 'warning';
-                                            statusText = 'تحذير';
+                                            statusClass = 'online';
+                                            statusText = 'طبيعي';
                                         }
                                     } else {
                                         statusClass = 'online';
