@@ -18,6 +18,7 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+
 if (!fs.existsSync('data')) {
     fs.mkdirSync('data');
 }
@@ -183,11 +184,14 @@ app.delete('/api/bridges/:id', (req, res) => {
 app.post('/api/data/:bridgeId', (req, res) => {
     const bridgeId = req.params.bridgeId;
     const data = req.body;
+    
     if (!data || typeof data.x !== 'number' || typeof data.y !== 'number' || typeof data.z !== 'number') {
         return res.status(400).json({ error: 'بيانات غير صالحة' });
     }
+    
     let targetBridge = null;
     let targetRegion = null;
+    
     for (const region of bridges) {
         if (region.type === 'region') {
             const bridge = region.bridges.find(b => b.id === bridgeId);
@@ -198,14 +202,18 @@ app.post('/api/data/:bridgeId', (req, res) => {
             }
         }
     }
+    
     if (!targetBridge) {
         return res.status(404).json({ error: 'الجسر غير موجود' });
     }
+    
     targetBridge.lastSeen = Date.now();
     targetBridge.status = 'online';
+    
     const timestamp = Date.now();
     const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
     const vibration = Math.abs(magnitude - 9.81);
+    
     const reading = {
         x: data.x,
         y: data.y,
@@ -214,10 +222,12 @@ app.post('/api/data/:bridgeId', (req, res) => {
         timestamp: timestamp,
         timeFormatted: new Date(timestamp).toLocaleTimeString('ar-SA')
     };
+    
     if (!targetBridge.isCalibrated) {
         targetBridge.calibrationCount++;
         reading.calibrationProgress = Math.min(100, (targetBridge.calibrationCount / 50) * 100);
         reading.isCalibrating = true;
+        
         if (targetBridge.calibrationCount >= 50) {
             let sum = 0;
             const lastReadings = targetBridge.readings.slice(-49);
@@ -226,67 +236,86 @@ app.post('/api/data/:bridgeId', (req, res) => {
             targetBridge.naturalFrequency = sum / 50;
             targetBridge.isCalibrated = true;
             reading.calibrationComplete = true;
+            
             io.emit('calibration-complete', {
                 bridgeId: bridgeId,
                 frequency: targetBridge.naturalFrequency
             });
         }
     } else {
-        const ratio = vibration / targetBridge.naturalFrequency;
-        reading.ratio = ratio;
-        if (ratio >= THRESHOLD_CRITICAL) {
+        
+        const increaseRatio = (vibration - targetBridge.naturalFrequency) / targetBridge.naturalFrequency;
+        const riskPercent = Math.max(0, increaseRatio * 100);
+        
+        reading.increaseRatio = increaseRatio;
+        reading.riskPercent = riskPercent;
+        
+        if (increaseRatio >= 1.0) {
             reading.alert = true;
             reading.severity = 'critical';
             reading.message = '🚨 خطر شديد';
+            
             const alert = {
                 id: Date.now(),
                 message: '🚨 خطر شديد!',
                 severity: 'critical',
                 vibration: vibration,
-                ratio: ratio,
+                increaseRatio: increaseRatio,
+                riskPercent: riskPercent,
                 timeFormatted: reading.timeFormatted
             };
+            
             targetBridge.alerts.unshift(alert);
             if (targetBridge.alerts.length > 20) targetBridge.alerts.pop();
             io.emit(`alert-${bridgeId}`, alert);
-        } else if (ratio >= THRESHOLD_WARNING) {
+            
+        } else if (increaseRatio >= 0.5) {
             reading.alert = true;
             reading.severity = 'warning';
             reading.message = '⚠️ تحذير';
+            
             const alert = {
                 id: Date.now(),
                 message: '⚠️ تحذير: اهتزاز عالي',
                 severity: 'warning',
                 vibration: vibration,
-                ratio: ratio,
+                increaseRatio: increaseRatio,
+                riskPercent: riskPercent,
                 timeFormatted: reading.timeFormatted
             };
+            
             targetBridge.alerts.unshift(alert);
             if (targetBridge.alerts.length > 20) targetBridge.alerts.pop();
             io.emit(`alert-${bridgeId}`, alert);
         }
     }
+    
     targetBridge.readings.push(reading);
     if (targetBridge.readings.length > 200) {
         targetBridge.readings.shift();
     }
+    
     saveBridges();
+    
     io.emit(`data-${bridgeId}`, {
         ...reading,
         naturalFrequency: targetBridge.naturalFrequency,
         isCalibrated: targetBridge.isCalibrated
     });
+    
     io.emit('bridges-status', {
         bridgeId: bridgeId,
         status: 'online',
         lastSeen: targetBridge.lastSeen
     });
+    
     res.json({ status: 'ok' });
 });
 
 setInterval(() => {
     const now = Date.now();
     let changed = false;
+    
     for (const region of bridges) {
         if (region.type === 'region') {
             for (const bridge of region.bridges) {
@@ -301,6 +330,7 @@ setInterval(() => {
             }
         }
     }
+    
     if (changed) {
         saveBridges();
     }
@@ -316,4 +346,3 @@ server.listen(PORT, '0.0.0.0', () => {
     ================================
     `);
 });
-
