@@ -286,7 +286,7 @@
             window.location.href = '/';
         }
 
-        // إعداد الرسم البياني
+        
         function initChart() {
             const ctx = document.getElementById('vibrationChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -319,7 +319,7 @@
             });
         }
 
-        // استقبال البيانات المباشرة
+        
         socket.on(`data-${bridgeId}`, (data) => {
             updateUI(data);
         });
@@ -350,7 +350,6 @@
             }
         });
 
-        // تحميل بيانات الجسر
         window.onload = function() {
             initChart();
             
@@ -359,7 +358,7 @@
                 .then(data => {
                     document.getElementById('bridgeName').innerText = data.name;
                     
-                    const apiUrl = `${window.location.protocol}//${window.location.hostname}:/api/data/${bridgeId}`;
+                    const apiUrl = `${window.location.protocol}//${window.location.hostname}/api/data/${bridgeId}`;
                     document.getElementById('apiUrl').innerText = apiUrl;
                     
                     if (data.naturalFrequency) {
@@ -403,13 +402,15 @@
                 document.getElementById('currentVib').innerHTML = 
                     data.vibration.toFixed(4) + ' <span style="font-size: 14px;">Hz</span>';
             }
-            
-            if (data.ratio) {
-                const percent = (data.ratio * 100).toFixed(1);
-                document.getElementById('riskPercent').innerHTML = 
-                    percent + ' <span style="font-size: 14px;">%</span>';
-            }
-            
+           if (data.riskPercent !== undefined) {
+    
+    document.getElementById('riskPercent').innerHTML = data.riskPercent.toFixed(1) + ' %';
+    console.log("Displaying riskPercent:", data.riskPercent);
+} else {
+    console.warn("riskPercent not found in data", data);
+
+               document.getElementById('riskPercent').innerHTML = '-- %';
+}
             if (data.isCalibrating) {
                 document.getElementById('calibrationCard').style.display = 'block';
                 document.getElementById('calibrationProgress').style.width = data.calibrationProgress + '%';
@@ -421,7 +422,6 @@
                 document.getElementById('calibrationCard').style.display = 'none';
             }
             
-            // تحديث الرسم البياني
             chart.data.labels.push(data.timeFormatted);
             chart.data.datasets[0].data.push(data.vibration);
             
@@ -499,3 +499,4 @@
 </body>
 
 </html>
+
