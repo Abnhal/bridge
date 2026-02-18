@@ -286,7 +286,7 @@
             window.location.href = '/';
         }
 
-        
+        // إعداد الرسم البياني
         function initChart() {
             const ctx = document.getElementById('vibrationChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -319,7 +319,7 @@
             });
         }
 
-        
+        // استقبال البيانات المباشرة
         socket.on(`data-${bridgeId}`, (data) => {
             updateUI(data);
         });
@@ -350,6 +350,7 @@
             }
         });
 
+        // تحميل بيانات الجسر
         window.onload = function() {
             initChart();
             
@@ -402,15 +403,31 @@
                 document.getElementById('currentVib').innerHTML = 
                     data.vibration.toFixed(4) + ' <span style="font-size: 14px;">Hz</span>';
             }
-           if (data.riskPercent !== undefined) {
-    
-    document.getElementById('riskPercent').innerHTML = data.riskPercent.toFixed(1) + ' %';
-    console.log("Displaying riskPercent:", data.riskPercent);
-} else {
-    console.warn("riskPercent not found in data", data);
-
-               document.getElementById('riskPercent').innerHTML = '-- %';
-}
+            
+            // عرض نسبة الخطورة
+            if (data.riskPercent !== undefined) {
+                document.getElementById('riskPercent').innerHTML = data.riskPercent.toFixed(1) + ' %';
+                console.log("Displaying riskPercent:", data.riskPercent);
+            } else {
+                console.warn("riskPercent not found in data", data);
+                document.getElementById('riskPercent').innerHTML = '-- %';
+            }
+            
+            // تحديث شريط الحالة حسب التحذير
+            const statusBadge = document.getElementById('statusBadge');
+            if (data.alert === true) {
+                if (data.severity === 'critical') {
+                    statusBadge.className = 'status-badge status-critical';
+                    statusBadge.innerText = '🚨 خطر شديد';
+                } else if (data.severity === 'warning') {
+                    statusBadge.className = 'status-badge status-warning';
+                    statusBadge.innerText = '⚠️ تحذير';
+                }
+            } else {
+                statusBadge.className = 'status-badge status-online';
+                statusBadge.innerText = '✅ طبيعي';
+            }
+            
             if (data.isCalibrating) {
                 document.getElementById('calibrationCard').style.display = 'block';
                 document.getElementById('calibrationProgress').style.width = data.calibrationProgress + '%';
@@ -422,6 +439,7 @@
                 document.getElementById('calibrationCard').style.display = 'none';
             }
             
+            // تحديث الرسم البياني
             chart.data.labels.push(data.timeFormatted);
             chart.data.datasets[0].data.push(data.vibration);
             
@@ -437,8 +455,11 @@
             const badge = document.getElementById('statusBadge');
             
             if (status === 'online') {
-                badge.className = 'status-badge status-online';
-                badge.innerText = '🟢 متصل';
+                // لا نغير النص هنا لأنه يتغير حسب التحذير في updateUI
+                // فقط نضمن أن اللون أخضر إذا كان متصل
+                if (!badge.classList.contains('status-critical') && !badge.classList.contains('status-warning')) {
+                    badge.className = 'status-badge status-online';
+                }
             } else {
                 badge.className = 'status-badge status-offline';
                 badge.innerText = '⚫ غير متصل';
@@ -497,6 +518,6 @@
         }
     </script>
 </body>
-
 </html>
+
 
