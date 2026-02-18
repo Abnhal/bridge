@@ -359,7 +359,7 @@
                 .then(data => {
                     document.getElementById('bridgeName').innerText = data.name;
                     
-                    const apiUrl = `${window.location.protocol}//${window.location.hostname}:3000/api/data/${bridgeId}`;
+                    const apiUrl = `${window.location.protocol}//${window.location.hostname}:/api/data/${bridgeId}`;
                     document.getElementById('apiUrl').innerText = apiUrl;
                     
                     if (data.naturalFrequency) {
@@ -497,4 +497,5 @@
         }
     </script>
 </body>
+
 </html>
