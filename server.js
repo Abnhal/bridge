@@ -242,6 +242,20 @@ app.post('/api/data/:bridgeId', (req, res) => {
                 frequency: targetBridge.naturalFrequency
             });
         }
+        
+        
+        targetBridge.readings.push(reading);
+        if (targetBridge.readings.length > 200) {
+            targetBridge.readings.shift();
+        }
+        saveBridges();
+        
+        io.emit(`data-${bridgeId}`, {
+            ...reading,
+            naturalFrequency: targetBridge.naturalFrequency,
+            isCalibrated: targetBridge.isCalibrated
+        });
+        
     } else {
         
         const increaseRatio = (vibration - targetBridge.naturalFrequency) / targetBridge.naturalFrequency;
@@ -288,20 +302,19 @@ app.post('/api/data/:bridgeId', (req, res) => {
             if (targetBridge.alerts.length > 20) targetBridge.alerts.pop();
             io.emit(`alert-${bridgeId}`, alert);
         }
+        
+        targetBridge.readings.push(reading);
+        if (targetBridge.readings.length > 200) {
+            targetBridge.readings.shift();
+        }
+        saveBridges();
+        
+        io.emit(`data-${bridgeId}`, {
+            ...reading,
+            naturalFrequency: targetBridge.naturalFrequency,
+            isCalibrated: targetBridge.isCalibrated
+        });
     }
-    
-    targetBridge.readings.push(reading);
-    if (targetBridge.readings.length > 200) {
-        targetBridge.readings.shift();
-    }
-    
-    saveBridges();
-    
-    io.emit(`data-${bridgeId}`, {
-        ...reading,
-        naturalFrequency: targetBridge.naturalFrequency,
-        isCalibrated: targetBridge.isCalibrated
-    });
     
     io.emit('bridges-status', {
         bridgeId: bridgeId,
