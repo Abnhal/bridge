@@ -256,18 +256,18 @@ app.post('/api/data/:bridgeId', (req, res) => {
         });
         
     } else {
-        // حساب نسبة الزيادة
+        
         const increaseRatio = (vibration - targetBridge.naturalFrequency) / targetBridge.naturalFrequency;
         const riskPercent = Math.max(0, increaseRatio * 100);
         
         reading.increaseRatio = increaseRatio;
         reading.riskPercent = riskPercent;
         
-        // القيم الافتراضية (إذا ما في تحذير)
+        
         reading.alert = false;
         reading.severity = 'normal';
         
-        if (increaseRatio >= 1.0) { // زيادة 100% (ضعف)
+        if (increaseRatio >= 1.0) { 
             reading.alert = true;
             reading.severity = 'critical';
             reading.message = '🚨 خطر شديد';
@@ -286,7 +286,7 @@ app.post('/api/data/:bridgeId', (req, res) => {
             if (targetBridge.alerts.length > 20) targetBridge.alerts.pop();
             io.emit(`alert-${bridgeId}`, alert);
             
-        } else if (increaseRatio >= 0.5) { // زيادة 50%
+        } else if (increaseRatio >= 0.5) { 
             reading.alert = true;
             reading.severity = 'warning';
             reading.message = '⚠️ تحذير';
