@@ -443,7 +443,7 @@
             chart.data.labels.push(data.timeFormatted);
             chart.data.datasets[0].data.push(data.vibration);
             
-            if (chart.data.labels.length > 50) {
+            if (chart.data.labels.length > 200) {
                 chart.data.labels.shift();
                 chart.data.datasets[0].data.shift();
             }
