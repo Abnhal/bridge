@@ -307,9 +307,7 @@ app.post('/api/data/:bridgeId', (req, res) => {
         }
         
         targetBridge.readings.push(reading);
-        if (targetBridge.readings.length > 200) {
-            targetBridge.readings.shift();
-        }
+        
         saveBridges();
         
         io.emit(`data-${bridgeId}`, {
