@@ -199,7 +199,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌉 نظام مراقبة الجسور</h1>
+            <h1>BridgeSen نظام مراقبه الجسور</h1>
             <div class="header-buttons">
                 <button class="btn btn-primary" onclick="window.location.href='add-region.html'">➕ إضافة منطقة</button>
                 <button class="btn btn-success" onclick="window.location.href='add-bridge.html'">🌉 إضافة جسر</button>
@@ -274,12 +274,12 @@
                                     </button>
                                 </div>
                             ` : region.bridges.map(bridge => {
-                                // تحديد حالة البطاقة بناءً على آخر قراءة
+                               
                                 let statusClass = 'offline';
                                 let statusText = 'غير متصل';
                                 
                                 if (bridge.status === 'online') {
-                                    // إذا في قراءات، نحدد الحالة من آخر قراءة
+                                
                                     if (bridge.readings && bridge.readings.length > 0) {
                                         const lastReading = bridge.readings[bridge.readings.length - 1];
                                         
