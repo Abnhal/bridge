@@ -1,7 +1,7 @@
 const { MongoClient } = require('mongodb');
 
 // 🔴 الرابط الجديد بعد التعديل
-const uri = "mongodb+srv://BridgeSen:11223344@bridgesendatabase.qh9vmm1.mongodb.net/bridge_monitor";
+const uri = process.env.MONGO_URI || "mongodb+srv://BridgeSen:11223344@bridgesendatabase.qh9vmm1.mongodb.net/bridge_monitor";
 
 // اسم قاعدة البيانات
 const dbName = "bridge_monitor";
