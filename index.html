@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام مراقبة الجسور</title>
+    <title>تفاصيل الجسر</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -40,7 +41,7 @@
             font-size: 24px;
         }
 
-        .header-buttons {
+        .header-left {
             display: flex;
             gap: 10px;
         }
@@ -59,8 +60,13 @@
             color: white;
         }
 
-        .btn-success {
-            background: #4CAF50;
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
             color: white;
         }
 
@@ -69,261 +75,448 @@
             box-shadow: 0 5px 10px rgba(0,0,0,0.2);
         }
 
-        .region-card {
-            background: white;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-bottom: 15px;
         }
 
-        .region-header {
+        .status-online {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-offline {
+            background: #999;
+            color: white;
+        }
+
+        .status-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .status-critical {
+            background: #f44336;
+            color: white;
+        }
+
+        .calibration-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px 20px;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 300px !important;
+        }
+
+        .alerts-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .alert-item {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .region-header h2 {
-            font-size: 20px;
+        .alert-critical {
+            background: #ffebee;
+            border-right: 4px solid #f44336;
         }
 
-        .region-stats {
-            display: flex;
-            gap: 15px;
-            font-size: 14px;
+        .alert-warning {
+            background: #fff3e0;
+            border-right: 4px solid #ff9800;
         }
 
-        .bridges-grid {
-            padding: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
-        }
-
-        .bridge-card {
-            background: #f8f9fa;
+        .api-info {
+            background: #f5f5f5;
             border-radius: 10px;
             padding: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border-right: 4px solid #999;
-        }
-
-        .bridge-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .bridge-card.online {
-            border-right-color: #4CAF50;
-        }
-
-        .bridge-card.offline {
-            border-right-color: #999;
-            opacity: 0.7;
-        }
-
-        .bridge-card.warning {
-            border-right-color: #ff9800;
-        }
-
-        .bridge-card.critical {
-            border-right-color: #f44336;
-        }
-
-        .bridge-name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .bridge-location {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 10px;
-        }
-
-        .bridge-status {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .status-online {
-            background: #e8f5e8;
-            color: #4CAF50;
-        }
-
-        .status-offline {
-            background: #f5f5f5;
-            color: #999;
-        }
-
-        .status-warning {
-            background: #fff3e0;
-            color: #ff9800;
-        }
-
-        .status-critical {
-            background: #ffebee;
-            color: #f44336;
-        }
-
-        .bridge-footer {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #999;
+            margin-bottom: 20px;
+            direction: ltr;
+            text-align: left;
+            font-family: monospace;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
-        .empty-region {
-            padding: 30px;
-            text-align: center;
-            color: #999;
-        }
-
-        .loading {
-            text-align: center;
+        .copy-btn {
+            background: #667eea;
             color: white;
-            padding: 50px;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>BridgeSen نظام مراقبه الجسور</h1>
-            <div class="header-buttons">
-                <button class="btn btn-primary" onclick="window.location.href='add-region.html'">➕ إضافة منطقة</button>
-                <button class="btn btn-success" onclick="window.location.href='add-bridge.html'">🌉 إضافة جسر</button>
+            <h1 id="bridgeName">جاري التحميل...</h1>
+            <div class="header-left">
+                <button class="btn btn-secondary" onclick="window.location.href='/'">الرئيسية</button>
             </div>
         </div>
 
-        <div id="regionsContainer">
-            <div class="loading">جاري التحميل...</div>
+        <div id="statusBadge" class="status-badge status-offline">غير متصل</div>
+
+        <div id="calibrationCard" class="calibration-card" style="display: none;">
+            <h3>🔧 جاري معايرة الجسر</h3>
+            <p id="calibrationText">يتم قياس التردد الطبيعي...</p>
+            <div class="progress-bar">
+                <div id="calibrationProgress" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="calibrationCount">0/50 قراءة</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">التردد الطبيعي</div>
+                <div class="stat-value" id="naturalFreq">-- <span style="font-size: 14px;">Hz</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">التردد الحالي</div>
+                <div class="stat-value" id="currentVib">-- <span style="font-size: 14px;">Hz</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">نسبة الخطورة</div>
+                <div class="stat-value" id="riskPercent">-- <span style="font-size: 14px;">%</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">عدد القراءات</div>
+                <div class="stat-value" id="readingsCount">0</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="vibrationChart"></canvas>
+        </div>
+
+        <div class="alerts-container">
+            <h3 style="margin-bottom: 15px;">الإنذارات</h3>
+            <div id="alertsList">
+                <p style="color: #999; text-align: center;">لا توجد إنذارات</p>
+            </div>
+        </div>
+
+        <div class="api-info">
+            <span id="apiUrl">جاري التحميل...</span>
+            <button class="copy-btn" onclick="copyApiUrl()">نسخ</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn btn-primary" onclick="recalibrate()">إعادة معايرة</button>
+            <button class="btn btn-danger" onclick="deleteBridge()">حذف الجسر</button>
         </div>
     </div>
 
     <script>
         const socket = io();
+        const urlParams = new URLSearchParams(window.location.search);
+        const bridgeId = urlParams.get('id');
+        
+        let chart;
+        let readings = [];
 
-        socket.on('bridges-status', () => {
-            loadData();
-        });
-
-        window.onload = loadData;
-
-        function loadData() {
-            fetch('/api/regions')
-                .then(res => res.json())
-                .then(regions => {
-                    renderRegions(regions);
-                })
-                .catch(() => {
-                    document.getElementById('regionsContainer').innerHTML = `
-                        <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
-                            <h3 style="color: #f44336;">❌ خطأ في التحميل</h3>
-                            <p style="color: #666;">تأكد من تشغيل الخادم</p>
-                        </div>
-                    `;
-                });
+        if (!bridgeId) {
+            window.location.href = '/';
         }
 
-        function renderRegions(regions) {
-            const container = document.getElementById('regionsContainer');
-            
-            if (!regions || regions.length === 0) {
-                container.innerHTML = `
-                    <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
-                        <h3 style="color: #666;">📭 لا توجد مناطق</h3>
-                        <p style="color: #999; margin: 15px 0;">أضف منطقة جديدة للبدء</p>
-                        <button class="btn btn-primary" onclick="window.location.href='add-region.html'">➕ إضافة منطقة</button>
-                    </div>
-                `;
-                return;
+        // إعداد الرسم البياني
+        function initChart() {
+            const ctx = document.getElementById('vibrationChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'الاهتزاز',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'التردد (Hz)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // استقبال البيانات المباشرة
+        socket.on(`data-${bridgeId}`, (data) => {
+            updateUI(data);
+        });
+
+        socket.on(`alert-${bridgeId}`, (alert) => {
+            addAlert(alert);
+        });
+
+        socket.on('calibration-complete', (data) => {
+            if (data.bridgeId === bridgeId) {
+                document.getElementById('calibrationCard').style.display = 'none';
+                document.getElementById('naturalFreq').innerHTML = 
+                    data.frequency.toFixed(4) + ' <span style="font-size: 14px;">Hz</span>';
             }
+        });
 
-            container.innerHTML = regions.map(region => {
-                const onlineCount = region.bridges.filter(b => b.status === 'online').length;
-                const alertCount = region.bridges.filter(b => b.alerts && b.alerts.length > 0).length;
+        socket.on('calibration-start', (id) => {
+            if (id === bridgeId) {
+                document.getElementById('calibrationCard').style.display = 'block';
+                document.getElementById('calibrationProgress').style.width = '0%';
+                document.getElementById('calibrationCount').innerText = '0/50 قراءة';
+            }
+        });
 
-                return `
-                    <div class="region-card">
-                        <div class="region-header">
-                            <h2>${region.name}</h2>
-                            <div class="region-stats">
-                                <span>✅ ${onlineCount}</span>
-                                <span>⚠️ ${alertCount}</span>
-                                <span>🌉 ${region.bridges.length}</span>
-                            </div>
-                        </div>
+        socket.on('bridges-status', (data) => {
+            if (data.bridgeId === bridgeId) {
+                updateStatus(data.status);
+            }
+        });
+
+        // تحميل بيانات الجسر
+        window.onload = function() {
+            initChart();
+            
+            fetch(`/api/bridges/${bridgeId}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('bridgeName').innerText = data.name;
+                    
+                    const apiUrl = `${window.location.protocol}//${window.location.hostname}/api/data/${bridgeId}`;
+                    document.getElementById('apiUrl').innerText = apiUrl;
+                    
+                    if (data.naturalFrequency) {
+                        document.getElementById('naturalFreq').innerHTML = 
+                            data.naturalFrequency.toFixed(4) + ' <span style="font-size: 14px;">Hz</span>';
+                    }
+                    
+                    if (data.readings) {
+                        readings = data.readings;
+                        readings.forEach(r => {
+                            if (r.vibration) {
+                                chart.data.labels.push(r.timeFormatted);
+                                chart.data.datasets[0].data.push(r.vibration);
+                            }
+                        });
+                        chart.update();
                         
-                        <div class="bridges-grid">
-                            ${region.bridges.length === 0 ? `
-                                <div class="empty-region">
-                                    <p>لا توجد جسور في هذه المنطقة</p>
-                                    <button class="btn btn-success" onclick="window.location.href='add-bridge.html?regionId=${region.id}'" style="padding: 5px 15px; font-size: 13px;">
-                                        + إضافة جسر
-                                    </button>
-                                </div>
-                            ` : region.bridges.map(bridge => {
-                               
-                                let statusClass = 'offline';
-                                let statusText = 'غير متصل';
-                                
-                                if (bridge.status === 'online') {
-                                
-                                    if (bridge.readings && bridge.readings.length > 0) {
-                                        const lastReading = bridge.readings[bridge.readings.length - 1];
-                                        
-                                        if (lastReading.alert === true) {
-                                            if (lastReading.severity === 'critical') {
-                                                statusClass = 'critical';
-                                                statusText = 'خطر';
-                                            } else if (lastReading.severity === 'warning') {
-                                                statusClass = 'warning';
-                                                statusText = 'تحذير';
-                                            }
-                                        } else {
-                                            statusClass = 'online';
-                                            statusText = 'طبيعي';
-                                        }
-                                    } else {
-                                        statusClass = 'online';
-                                        statusText = 'متصل';
-                                    }
-                                }
+                        document.getElementById('readingsCount').innerText = readings.length;
+                    }
+                    
+                    if (data.alerts) {
+                        data.alerts.forEach(alert => addAlert(alert, false));
+                    }
+                    
+                    if (!data.isCalibrated && data.calibrationCount > 0) {
+                        document.getElementById('calibrationCard').style.display = 'block';
+                        document.getElementById('calibrationProgress').style.width = 
+                            (data.calibrationCount / 50 * 100) + '%';
+                        document.getElementById('calibrationCount').innerText = 
+                            data.calibrationCount + '/50 قراءة';
+                    }
+                    
+                    updateStatus(data.status);
+                });
+        };
 
-                                const lastSeen = bridge.lastSeen 
-                                    ? new Date(bridge.lastSeen).toLocaleTimeString('ar-SA')
-                                    : 'لم يتصل';
+        function updateUI(data) {
+            document.getElementById('readingsCount').innerText = readings.length + 1;
+            
+            if (data.vibration) {
+                document.getElementById('currentVib').innerHTML = 
+                    data.vibration.toFixed(4) + ' <span style="font-size: 14px;">Hz</span>';
+            }
+            
+            // عرض نسبة الخطورة
+            if (data.riskPercent !== undefined) {
+                document.getElementById('riskPercent').innerHTML = data.riskPercent.toFixed(1) + ' %';
+                console.log("Displaying riskPercent:", data.riskPercent);
+            } else {
+                console.warn("riskPercent not found in data", data);
+                document.getElementById('riskPercent').innerHTML = '-- %';
+            }
+            
+            // تحديث شريط الحالة حسب التحذير
+            const statusBadge = document.getElementById('statusBadge');
+            if (data.alert === true) {
+                if (data.severity === 'critical') {
+                    statusBadge.className = 'status-badge status-critical';
+                    statusBadge.innerText = '🚨 خطر شديد';
+                } else if (data.severity === 'warning') {
+                    statusBadge.className = 'status-badge status-warning';
+                    statusBadge.innerText = '⚠️ تحذير';
+                }
+            } else {
+                statusBadge.className = 'status-badge status-online';
+                statusBadge.innerText = '✅ طبيعي';
+            }
+            
+            if (data.isCalibrating) {
+                document.getElementById('calibrationCard').style.display = 'block';
+                document.getElementById('calibrationProgress').style.width = data.calibrationProgress + '%';
+                document.getElementById('calibrationCount').innerText = 
+                    Math.round(data.calibrationProgress / 2) + '/50 قراءة';
+            }
+            
+            if (data.calibrationComplete) {
+                document.getElementById('calibrationCard').style.display = 'none';
+            }
+            
+            // تحديث الرسم البياني
+            chart.data.labels.push(data.timeFormatted);
+            chart.data.datasets[0].data.push(data.vibration);
+            
+            if (chart.data.labels.length > 200) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            
+            chart.update();
+        }
 
-                                return `
-                                    <div class="bridge-card ${statusClass}" onclick="window.location.href='bridge.html?id=${bridge.id}'">
-                                        <div class="bridge-name">${bridge.name}</div>
-                                        <div class="bridge-location">${bridge.location || 'موقع غير محدد'}</div>
-                                        <div style="margin: 10px 0;">
-                                            <span class="bridge-status status-${statusClass}">${statusText}</span>
-                                        </div>
-                                        <div class="bridge-footer">
-                                            <span>🕒 ${lastSeen}</span>
-                                            ${bridge.alerts && bridge.alerts.length > 0 ? '<span>🔔 إنذار</span>' : ''}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+        function updateStatus(status) {
+            const badge = document.getElementById('statusBadge');
+            
+            if (status === 'online') {
+                // لا نغير النص هنا لأنه يتغير حسب التحذير في updateUI
+                // فقط نضمن أن اللون أخضر إذا كان متصل
+                if (!badge.classList.contains('status-critical') && !badge.classList.contains('status-warning')) {
+                    badge.className = 'status-badge status-online';
+                }
+            } else {
+                badge.className = 'status-badge status-offline';
+                badge.innerText = '⚫ غير متصل';
+            }
+        }
+
+        function addAlert(alert, playSound = true) {
+            const list = document.getElementById('alertsList');
+            
+            if (list.children[0]?.tagName === 'P') {
+                list.innerHTML = '';
+            }
+            
+            const div = document.createElement('div');
+            div.className = `alert-item alert-${alert.severity}`;
+            div.innerHTML = `
+                <div>
+                    <strong>${alert.message}</strong>
+                    <div style="font-size: 13px; color: #666;">${alert.vibration.toFixed(4)} Hz</div>
+                </div>
+                <div style="font-size: 12px; color: #999;">${alert.timeFormatted}</div>
+            `;
+            
+            list.insertBefore(div, list.firstChild);
+            
+            if (list.children.length > 10) {
+                list.removeChild(list.lastChild);
+            }
+        }
+
+        function copyApiUrl() {
+            const url = document.getElementById('apiUrl').innerText;
+            navigator.clipboard.writeText(url);
+            alert('✅ تم نسخ الرابط');
+        }
+
+        function recalibrate() {
+            if (confirm('هل تريد إعادة معايرة الجسر؟')) {
+                fetch(`/api/bridges/${bridgeId}/recalibrate`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(() => {
+                        chart.data.labels = [];
+                        chart.data.datasets[0].data = [];
+                        chart.update();
+                    });
+            }
+        }
+
+        function deleteBridge() {
+            if (confirm('هل أنت متأكد من حذف هذا الجسر؟')) {
+                fetch(`/api/bridges/${bridgeId}`, { method: 'DELETE' })
+                    .then(() => {
+                        window.location.href = '/';
+                    });
+            }
         }
     </script>
 </body>
 </html>
+

@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const fs = require('fs');
 const path = require('path');
+const { connectToDB, saveBridgesToDB, loadBridgesFromDB } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,20 +20,20 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// مجلد data للاحتياط (اختياري)
 if (!fs.existsSync('data')) {
     fs.mkdirSync('data');
 }
 
 let bridges = [];
-const dataFile = 'data/bridges.json';
 
-function loadBridges() {
+// ✅ تحميل البيانات من MongoDB عند بدء التشغيل
+(async () => {
     try {
-        if (fs.existsSync(dataFile)) {
-            const data = fs.readFileSync(dataFile, 'utf8');
-            bridges = JSON.parse(data);
-            console.log(`✅ تم تحميل ${bridges.length} جسر`);
-        } else {
+        await connectToDB();
+        bridges = await loadBridgesFromDB();
+        if (!bridges || bridges.length === 0) {
+            // بيانات تجريبية إذا ما فيه شيء
             bridges = [
                 {
                     id: 'region_riyadh',
@@ -47,24 +48,20 @@ function loadBridges() {
                     bridges: []
                 }
             ];
-            saveBridges();
+            await saveBridgesToDB(bridges);
             console.log('📝 تم إنشاء مناطق تجريبية');
+        } else {
+            console.log(`✅ تم تحميل ${bridges.length} جسر من MongoDB`);
         }
     } catch (err) {
         console.error('❌ خطأ في تحميل البيانات:', err);
         bridges = [];
     }
-}
+})();
 
-function saveBridges() {
-    try {
-        fs.writeFileSync(dataFile, JSON.stringify(bridges, null, 2));
-    } catch (err) {
-        console.error('❌ خطأ في حفظ البيانات:', err);
-    }
-}
-
-loadBridges();
+// 🔴 دوال قديمة - تم تعطيلها (نستخدم MongoDB الآن)
+// function loadBridges() { ... }
+// function saveBridges() { ... }
 
 app.get('/api/regions', (req, res) => {
     const regions = bridges.filter(b => b.type === 'region');
@@ -81,7 +78,7 @@ app.get('/api/regions/list', (req, res) => {
     res.json(regions);
 });
 
-app.post('/api/regions', (req, res) => {
+app.post('/api/regions', async (req, res) => {
     const { name } = req.body;
     if (!name) {
         return res.status(400).json({ error: 'اسم المنطقة مطلوب' });
@@ -93,14 +90,14 @@ app.post('/api/regions', (req, res) => {
         bridges: []
     };
     bridges.push(newRegion);
-    saveBridges();
+    await saveBridgesToDB(bridges);
     res.json({
         message: 'تم إضافة المنطقة',
         region: newRegion
     });
 });
 
-app.post('/api/bridges', (req, res) => {
+app.post('/api/bridges', async (req, res) => {
     const { name, location, regionId } = req.body;
     if (!name || !regionId) {
         return res.status(400).json({ error: 'اسم الجسر والمنطقة مطلوبان' });
@@ -123,7 +120,7 @@ app.post('/api/bridges', (req, res) => {
         calibrationCount: 0
     };
     region.bridges.push(newBridge);
-    saveBridges();
+    await saveBridgesToDB(bridges);
     res.json({
         message: 'تم إضافة الجسر',
         bridge: newBridge
@@ -146,7 +143,7 @@ app.get('/api/bridges/:id', (req, res) => {
     res.status(404).json({ error: 'الجسر غير موجود' });
 });
 
-app.post('/api/bridges/:id/recalibrate', (req, res) => {
+app.post('/api/bridges/:id/recalibrate', async (req, res) => {
     const bridgeId = req.params.id;
     for (const region of bridges) {
         if (region.type === 'region') {
@@ -157,7 +154,7 @@ app.post('/api/bridges/:id/recalibrate', (req, res) => {
                 bridge.naturalFrequency = null;
                 bridge.readings = [];
                 bridge.alerts = [];
-                saveBridges();
+                await saveBridgesToDB(bridges);
                 io.emit('calibration-start', bridgeId);
                 return res.json({ message: 'بدء المعايرة' });
             }
@@ -166,14 +163,14 @@ app.post('/api/bridges/:id/recalibrate', (req, res) => {
     res.status(404).json({ error: 'الجسر غير موجود' });
 });
 
-app.delete('/api/bridges/:id', (req, res) => {
+app.delete('/api/bridges/:id', async (req, res) => {
     const bridgeId = req.params.id;
     for (const region of bridges) {
         if (region.type === 'region') {
             const index = region.bridges.findIndex(b => b.id === bridgeId);
             if (index !== -1) {
                 region.bridges.splice(index, 1);
-                saveBridges();
+                await saveBridgesToDB(bridges);
                 return res.json({ message: 'تم حذف الجسر' });
             }
         }
@@ -181,7 +178,7 @@ app.delete('/api/bridges/:id', (req, res) => {
     res.status(404).json({ error: 'الجسر غير موجود' });
 });
 
-app.post('/api/data/:bridgeId', (req, res) => {
+app.post('/api/data/:bridgeId', async (req, res) => {
     const bridgeId = req.params.bridgeId;
     const data = req.body;
     
@@ -244,10 +241,8 @@ app.post('/api/data/:bridgeId', (req, res) => {
         }
         
         targetBridge.readings.push(reading);
-        if (targetBridge.readings.length > 200) {
-            targetBridge.readings.shift();
-        }
-        saveBridges();
+        // ما نحذف قراءات قديمة (تخزين كامل)
+        await saveBridgesToDB(bridges);
         
         io.emit(`data-${bridgeId}`, {
             ...reading,
@@ -256,13 +251,11 @@ app.post('/api/data/:bridgeId', (req, res) => {
         });
         
     } else {
-        
         const increaseRatio = (vibration - targetBridge.naturalFrequency) / targetBridge.naturalFrequency;
         const riskPercent = Math.max(0, increaseRatio * 100);
         
         reading.increaseRatio = increaseRatio;
         reading.riskPercent = riskPercent;
-        
         
         reading.alert = false;
         reading.severity = 'normal';
@@ -307,8 +300,8 @@ app.post('/api/data/:bridgeId', (req, res) => {
         }
         
         targetBridge.readings.push(reading);
-        
-        saveBridges();
+        // ما نحذف قراءات قديمة (تخزين كامل)
+        await saveBridgesToDB(bridges);
         
         io.emit(`data-${bridgeId}`, {
             ...reading,
@@ -326,7 +319,7 @@ app.post('/api/data/:bridgeId', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-setInterval(() => {
+setInterval(async () => {
     const now = Date.now();
     let changed = false;
     
@@ -346,7 +339,7 @@ setInterval(() => {
     }
     
     if (changed) {
-        saveBridges();
+        await saveBridgesToDB(bridges);
     }
 }, 5000);
 
