@@ -64,9 +64,83 @@
             color: white;
         }
 
+        .btn-search-header {
+            background: #ff9800;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-search-header:hover {
+            transform: scale(1.05);
+            background: #f57c00;
+        }
+
         .btn:hover {
             transform: scale(1.05);
             box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        /* شريط البحث */
+        .search-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .search-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .search-group select,
+        .search-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .btn-search, .btn-reset {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-search {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-reset {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .btn-search:hover, .btn-reset:hover {
+            transform: scale(1.05);
         }
 
         .region-card {
@@ -235,6 +309,25 @@
             <div class="header-buttons">
                 <button class="btn btn-primary" onclick="window.location.href='add-region.html'">➕ إضافة منطقة</button>
                 <button class="btn btn-success" onclick="window.location.href='add-bridge.html'">🌉 إضافة جسر</button>
+                <button class="btn-search-header" onclick="showSearchBar()">🔍 بحث</button>
+            </div>
+        </div>
+
+        <!-- شريط البحث (مخفي في البداية) -->
+        <div id="searchSection" style="display: none;">
+            <div class="search-bar">
+                <div class="search-group">
+                    <label>📍 المنطقة:</label>
+                    <select id="searchRegion">
+                        <option value="">كل المناطق</option>
+                    </select>
+                </div>
+                <div class="search-group">
+                    <label>🌉 اسم الجسر:</label>
+                    <input type="text" id="searchBridge" placeholder="اكتب اسم الجسر...">
+                </div>
+                <button class="btn-search" onclick="searchBridges()">البحث عن جسر</button>
+                <button class="btn-reset" onclick="resetSearchAndHide()">🗑️ إلغاء البحث</button>
             </div>
         </div>
 
@@ -245,6 +338,7 @@
 
     <script>
         const socket = io();
+        let allRegions = [];
 
         socket.on('bridges-status', () => {
             loadData();
@@ -255,8 +349,8 @@
         async function loadData() {
             try {
                 const res = await fetch('/api/regions');
-                const regions = await res.json();
-                renderRegions(regions);
+                allRegions = await res.json();
+                renderRegions(allRegions);
             } catch (err) {
                 document.getElementById('regionsContainer').innerHTML = `
                     <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
@@ -267,25 +361,73 @@
             }
         }
 
+        function showSearchBar() {
+            const searchSection = document.getElementById('searchSection');
+            if (searchSection.style.display === 'none') {
+                searchSection.style.display = 'block';
+                // تحديث قائمة المناطق في البحث
+                const select = document.getElementById('searchRegion');
+                select.innerHTML = '<option value="">كل المناطق</option>' +
+                    allRegions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+            } else {
+                searchSection.style.display = 'none';
+            }
+        }
+
+        function searchBridges() {
+            const selectedRegionId = document.getElementById('searchRegion').value;
+            const searchText = document.getElementById('searchBridge').value.trim().toLowerCase();
+            
+            let filteredRegions = [...allRegions];
+            
+            if (selectedRegionId) {
+                filteredRegions = filteredRegions.filter(r => r.id === selectedRegionId);
+            }
+            
+            if (searchText) {
+                filteredRegions = filteredRegions.map(region => ({
+                    ...region,
+                    bridges: region.bridges.filter(bridge => 
+                        bridge.name.toLowerCase().includes(searchText)
+                    )
+                })).filter(region => region.bridges.length > 0);
+            }
+            
+            renderRegions(filteredRegions);
+            
+            if (filteredRegions.length === 0) {
+                document.getElementById('regionsContainer').innerHTML = `
+                    <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
+                        <h3 style="color: #666;">🔍 لا توجد نتائج</h3>
+                        <p style="color: #999;">لم يتم العثور على جسور تطابق بحثك</p>
+                    </div>
+                `;
+            }
+        }
+
+        function resetSearchAndHide() {
+            // إخفاء شريط البحث
+            document.getElementById('searchSection').style.display = 'none';
+            // إعادة تعيين حقول البحث
+            document.getElementById('searchRegion').value = '';
+            document.getElementById('searchBridge').value = '';
+            // عرض كل المناطق والجسور
+            renderRegions(allRegions);
+        }
+
         async function deleteRegion(regionId) {
             if (confirm('هل تريد حذف هذه المنطقة وجميع جسورها؟')) {
                 const res = await fetch(`/api/regions/${regionId}`, { method: 'DELETE' });
-                if (res.ok) {
-                    loadData();
-                } else {
-                    alert('❌ فشل حذف المنطقة');
-                }
+                if (res.ok) loadData();
+                else alert('❌ فشل حذف المنطقة');
             }
         }
 
         async function deleteBridge(bridgeId) {
             if (confirm('هل تريد حذف هذا الجسر؟')) {
                 const res = await fetch(`/api/bridges/${bridgeId}`, { method: 'DELETE' });
-                if (res.ok) {
-                    loadData();
-                } else {
-                    alert('❌ فشل حذف الجسر');
-                }
+                if (res.ok) loadData();
+                else alert('❌ فشل حذف الجسر');
             }
         }
 
