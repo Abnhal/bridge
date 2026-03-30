@@ -85,7 +85,6 @@
             box-shadow: 0 5px 10px rgba(0,0,0,0.2);
         }
 
-        /* شريط البحث */
         .search-bar {
             background: white;
             border-radius: 15px;
@@ -120,26 +119,18 @@
             font-size: 14px;
         }
 
-        .btn-search, .btn-reset {
+        .btn-reset {
             padding: 10px 25px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s;
-        }
-
-        .btn-search {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-reset {
             background: #f5f5f5;
             color: #666;
         }
 
-        .btn-search:hover, .btn-reset:hover {
+        .btn-reset:hover {
             transform: scale(1.05);
         }
 
@@ -318,15 +309,14 @@
             <div class="search-bar">
                 <div class="search-group">
                     <label>📍 المنطقة:</label>
-                    <select id="searchRegion">
+                    <select id="searchRegion" onchange="filterLive()">
                         <option value="">كل المناطق</option>
                     </select>
                 </div>
                 <div class="search-group">
                     <label>🌉 اسم الجسر:</label>
-                    <input type="text" id="searchBridge" placeholder="اكتب اسم الجسر...">
+                    <input type="text" id="searchBridge" placeholder="اكتب اسم الجسر..." oninput="filterLive()">
                 </div>
-                <button class="btn-search" onclick="searchBridges()">البحث عن جسر</button>
                 <button class="btn-reset" onclick="resetSearchAndHide()">🗑️ إلغاء البحث</button>
             </div>
         </div>
@@ -365,25 +355,29 @@
             const searchSection = document.getElementById('searchSection');
             if (searchSection.style.display === 'none') {
                 searchSection.style.display = 'block';
-                // تحديث قائمة المناطق في البحث
                 const select = document.getElementById('searchRegion');
                 select.innerHTML = '<option value="">كل المناطق</option>' +
                     allRegions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                // تفعيل الفلترة فوراً بعد ظهور شريط البحث
+                filterLive();
             } else {
-                searchSection.style.display = 'none';
+                resetSearchAndHide();
             }
         }
 
-        function searchBridges() {
+        // ✅ البحث الفوري (بدون زر)
+        function filterLive() {
             const selectedRegionId = document.getElementById('searchRegion').value;
             const searchText = document.getElementById('searchBridge').value.trim().toLowerCase();
             
             let filteredRegions = [...allRegions];
             
+            // فلتر حسب المنطقة
             if (selectedRegionId) {
                 filteredRegions = filteredRegions.filter(r => r.id === selectedRegionId);
             }
             
+            // فلتر حسب اسم الجسر (فوري)
             if (searchText) {
                 filteredRegions = filteredRegions.map(region => ({
                     ...region,
@@ -399,19 +393,16 @@
                 document.getElementById('regionsContainer').innerHTML = `
                     <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
                         <h3 style="color: #666;">🔍 لا توجد نتائج</h3>
-                        <p style="color: #999;">لم يتم العثور على جسور تطابق بحثك</p>
+                        <p style="color: #999;">لا توجد جسور تطابق بحثك</p>
                     </div>
                 `;
             }
         }
 
         function resetSearchAndHide() {
-            // إخفاء شريط البحث
             document.getElementById('searchSection').style.display = 'none';
-            // إعادة تعيين حقول البحث
             document.getElementById('searchRegion').value = '';
             document.getElementById('searchBridge').value = '';
-            // عرض كل المناطق والجسور
             renderRegions(allRegions);
         }
 
