@@ -83,7 +83,7 @@
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
-             align-items: center;
+            align-items: center;
         }
 
         .region-header h2 {
@@ -94,6 +94,21 @@
             display: flex;
             gap: 15px;
             font-size: 14px;
+        }
+
+        .delete-region-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .delete-region-btn:hover {
+            background: rgba(255, 0, 0, 0.6);
         }
 
         .bridges-grid {
@@ -110,6 +125,7 @@
             cursor: pointer;
             transition: all 0.3s;
             border-right: 4px solid #999;
+            position: relative;
         }
 
         .bridge-card:hover {
@@ -183,6 +199,22 @@
             justify-content: space-between;
         }
 
+        .delete-bridge-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .delete-bridge-btn:hover {
+            background: #d32f2f;
+        }
+
         .empty-region {
             padding: 30px;
             text-align: center;
@@ -220,20 +252,41 @@
 
         window.onload = loadData;
 
-        function loadData() {
-            fetch('/api/regions')
-                .then(res => res.json())
-                .then(regions => {
-                    renderRegions(regions);
-                })
-                .catch(() => {
-                    document.getElementById('regionsContainer').innerHTML = `
-                        <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
-                            <h3 style="color: #f44336;">❌ خطأ في التحميل</h3>
-                            <p style="color: #666;">تأكد من تشغيل الخادم</p>
-                        </div>
-                    `;
-                });
+        async function loadData() {
+            try {
+                const res = await fetch('/api/regions');
+                const regions = await res.json();
+                renderRegions(regions);
+            } catch (err) {
+                document.getElementById('regionsContainer').innerHTML = `
+                    <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
+                        <h3 style="color: #f44336;">❌ خطأ في التحميل</h3>
+                        <p style="color: #666;">تأكد من تشغيل الخادم</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function deleteRegion(regionId) {
+            if (confirm('هل تريد حذف هذه المنطقة وجميع جسورها؟')) {
+                const res = await fetch(`/api/regions/${regionId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadData();
+                } else {
+                    alert('❌ فشل حذف المنطقة');
+                }
+            }
+        }
+
+        async function deleteBridge(bridgeId) {
+            if (confirm('هل تريد حذف هذا الجسر؟')) {
+                const res = await fetch(`/api/bridges/${bridgeId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadData();
+                } else {
+                    alert('❌ فشل حذف الجسر');
+                }
+            }
         }
 
         function renderRegions(regions) {
@@ -258,12 +311,13 @@
                     <div class="region-card">
                         <div class="region-header">
                             <h2>${region.name}</h2>
-                              <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn-delete" onclick="deleteRegion('${region.id}')" style="background: #f44336; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer;">🗑️ حذف المنطقة</button>
-                            <div class="region-stats">
-                                <span>✅ ${onlineCount}</span>
-                                <span>⚠️ ${alertCount}</span>
-                                <span>🌉 ${region.bridges.length}</span>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="region-stats">
+                                    <span>✅ ${onlineCount}</span>
+                                    <span>⚠️ ${alertCount}</span>
+                                    <span>🌉 ${region.bridges.length}</span>
+                                </div>
+                                <button class="delete-region-btn" onclick="deleteRegion('${region.id}')">🗑️ حذف المنطقة</button>
                             </div>
                         </div>
                         
@@ -315,6 +369,7 @@
                                             <span>🕒 ${lastSeen}</span>
                                             ${bridge.alerts && bridge.alerts.length > 0 ? '<span>🔔 إنذار</span>' : ''}
                                         </div>
+                                        <button class="delete-bridge-btn" onclick="event.stopPropagation(); deleteBridge('${bridge.id}')">🗑️ حذف الجسر</button>
                                     </div>
                                 `;
                             }).join('')}
