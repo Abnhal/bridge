@@ -83,7 +83,7 @@
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+             align-items: center;
         }
 
         .region-header h2 {
@@ -258,6 +258,8 @@
                     <div class="region-card">
                         <div class="region-header">
                             <h2>${region.name}</h2>
+                              <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-delete" onclick="deleteRegion('${region.id}')" style="background: #f44336; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer;">🗑️ حذف المنطقة</button>
                             <div class="region-stats">
                                 <span>✅ ${onlineCount}</span>
                                 <span>⚠️ ${alertCount}</span>
