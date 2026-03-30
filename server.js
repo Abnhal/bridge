@@ -18,7 +18,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-
 });
 
 // مجلد data للاحتياط (اختياري)
@@ -35,22 +34,9 @@ let bridges = [];
         bridges = await loadBridgesFromDB();
         if (!bridges || bridges.length === 0) {
             // بيانات تجريبية إذا ما فيه شيء
-            bridges = [
-                {
-                    id: 'region_riyadh',
-                    name: 'منطقة الرياض',
-                    type: 'region',
-                    bridges: []
-                },
-                {
-                    id: 'region_tabuk',
-                    name: 'منطقة تبوك',
-                    type: 'region',
-                    bridges: []
-                }
-            ];
+            bridges = []; // ابدأ بدون مناطق تجريبية
             await saveBridgesToDB(bridges);
-            console.log('📝 تم إنشاء مناطق تجريبية');
+            console.log('📝 تم بدء قاعدة بيانات فارغة');
         } else {
             console.log(`✅ تم تحميل ${bridges.length} جسر من MongoDB`);
         }
@@ -60,9 +46,7 @@ let bridges = [];
     }
 })();
 
-// 🔴 دوال قديمة - تم تعطيلها (نستخدم MongoDB الآن)
-// function loadBridges() { ... }
-// function saveBridges() { ... }
+// ==================== Routes ====================
 
 app.get('/api/regions', (req, res) => {
     const regions = bridges.filter(b => b.type === 'region');
@@ -96,6 +80,20 @@ app.post('/api/regions', async (req, res) => {
         message: 'تم إضافة المنطقة',
         region: newRegion
     });
+});
+
+// ✅ حذف منطقة (مع كل جسورها)
+app.delete('/api/regions/:id', async (req, res) => {
+    const regionId = req.params.id;
+    const index = bridges.findIndex(b => b.id === regionId && b.type === 'region');
+    
+    if (index !== -1) {
+        bridges.splice(index, 1);
+        await saveBridgesToDB(bridges);
+        return res.json({ message: 'تم حذف المنطقة' });
+    }
+    
+    res.status(404).json({ error: 'المنطقة غير موجودة' });
 });
 
 app.post('/api/bridges', async (req, res) => {
@@ -242,7 +240,6 @@ app.post('/api/data/:bridgeId', async (req, res) => {
         }
         
         targetBridge.readings.push(reading);
-        // ما نحذف قراءات قديمة (تخزين كامل)
         await saveBridgesToDB(bridges);
         
         io.emit(`data-${bridgeId}`, {
@@ -301,7 +298,6 @@ app.post('/api/data/:bridgeId', async (req, res) => {
         }
         
         targetBridge.readings.push(reading);
-        // ما نحذف قراءات قديمة (تخزين كامل)
         await saveBridgesToDB(bridges);
         
         io.emit(`data-${bridgeId}`, {
