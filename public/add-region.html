@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إضافة جسر جديد</title>
+    <title>إضافة منطقة جديدة</title>
     <style>
         * {
             margin: 0;
@@ -52,7 +52,7 @@
             font-weight: bold;
         }
 
-        input, select {
+        input {
             width: 100%;
             padding: 12px;
             border: 2px solid #e0e0e0;
@@ -60,11 +60,7 @@
             font-size: 16px;
         }
 
-        select {
-            background: white;
-        }
-
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -99,105 +95,45 @@
         .btn:hover {
             transform: scale(1.02);
         }
-
-        .hint {
-            color: #999;
-            font-size: 13px;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
     <div class="form-container">
-        <h1>🌉 إضافة جسر جديد</h1>
-        <p>أضف جسراً جديداً إلى إحدى المناطق</p>
+        <h1>🏙️ إضافة منطقة جديدة</h1>
+        <p>أضف منطقة جديدة لتجميع الجسور فيها</p>
 
         <div class="form-group">
-            <label>المنطقة</label>
-            <select id="regionSelect">
-                <option value="">جاري تحميل المناطق...</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>اسم الجسر</label>
-            <input type="text" id="bridgeName" placeholder="مثال: جسر الملك فهد">
-        </div>
-
-        <div class="form-group">
-            <label>الموقع (اختياري)</label>
-            <input type="text" id="bridgeLocation" placeholder="مثال: تبوك - المصيف">
-            <div class="hint">وصف دقيق لموقع الجسر</div>
+            <label>اسم المنطقة</label>
+            <input type="text" id="regionName" placeholder="مثال: منطقة تبوك" autocomplete="off">
         </div>
 
         <div class="buttons">
             <button class="btn btn-secondary" onclick="window.location.href='/'">إلغاء</button>
-            <button class="btn btn-primary" onclick="addBridge()">إضافة</button>
+            <button class="btn btn-primary" onclick="addRegion()">إضافة</button>
         </div>
     </div>
 
     <script>
-        window.onload = function() {
-            loadRegions();
+        async function addRegion() {
+            const name = document.getElementById('regionName').value.trim();
             
-            const urlParams = new URLSearchParams(window.location.search);
-            const regionId = urlParams.get('regionId');
-            if (regionId) {
-                setTimeout(() => {
-                    document.getElementById('regionSelect').value = regionId;
-                }, 500);
-            }
-        };
-
-        async function loadRegions() {
-            try {
-                const res = await fetch('/api/regions/list');
-                const regions = await res.json();
-                
-                const select = document.getElementById('regionSelect');
-                
-                if (regions.length === 0) {
-                    select.innerHTML = '<option value="">لا توجد مناطق</option>';
-                } else {
-                    select.innerHTML = '<option value="">-- اختر المنطقة --</option>' +
-                        regions.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-                }
-            } catch (err) {
-                document.getElementById('regionSelect').innerHTML = '<option value="">خطأ في التحميل</option>';
-            }
-        }
-
-        async function addBridge() {
-            const regionId = document.getElementById('regionSelect').value;
-            const name = document.getElementById('bridgeName').value.trim();
-            
-            if (!regionId) {
-                alert('الرجاء اختيار المنطقة');
-                return;
-            }
-
             if (!name) {
-                alert('الرجاء إدخال اسم الجسر');
+                alert('الرجاء إدخال اسم المنطقة');
                 return;
             }
 
             try {
-                const res = await fetch('/api/bridges', {
+                const res = await fetch('/api/regions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: name,
-                        location: document.getElementById('bridgeLocation').value.trim(),
-                        regionId: regionId
-                    })
+                    body: JSON.stringify({ name: name })
                 });
 
-                const data = await res.json();
-
                 if (res.ok) {
-                    alert('✅ تم إضافة الجسر');
-                    window.location.href = `bridge.html?id=${data.bridge.id}`;
+                    alert('✅ تم إضافة المنطقة');
+                    window.location.href = '/';
                 } else {
+                    const data = await res.json();
                     alert('❌ ' + data.error);
                 }
             } catch (err) {
@@ -206,5 +142,4 @@
         }
     </script>
 </body>
-
 </html>
