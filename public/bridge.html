@@ -6,6 +6,8 @@
     <title>تفاصيل الجسر</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -55,6 +57,15 @@
             transition: all 0.3s;
         }
 
+        .btn-pdf {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-pdf:hover {
+            background: #45a049;
+        }
+
         .btn-primary {
             background: #667eea;
             color: white;
@@ -73,6 +84,45 @@
         .btn:hover {
             transform: scale(1.05);
             box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 1;
+            bottom: 50px;
+            right: 0;
+        }
+
+        .dropdown-content button {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            width: 100%;
+            text-align: right;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 8px;
+        }
+
+        .dropdown-content button:hover {
+            background-color: #f1f1f1;
+        }
+
+        .show {
+            display: block;
         }
 
         .status-badge {
@@ -101,29 +151,6 @@
         .status-critical {
             background: #f44336;
             color: white;
-        }
-
-        .calibration-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 10px;
-            margin: 15px 0;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: #4CAF50;
-            transition: width 0.3s;
         }
 
         .stats-grid {
@@ -211,6 +238,97 @@
             border-radius: 5px;
             cursor: pointer;
         }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .report-container {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 800px;
+            background: white;
+            padding: 30px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+        }
+
+        .report-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .report-header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .report-header p {
+            color: #666;
+        }
+
+        .report-section {
+            margin-bottom: 25px;
+        }
+
+        .report-section h3 {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .report-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .report-stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .report-stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-table th, .report-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .report-table th {
+            background: #667eea;
+            color: white;
+        }
+
+        .report-footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -239,7 +357,7 @@
                 <div class="stat-value" id="naturalFreq">-- <span style="font-size: 14px;">Hz</span></div>
             </div>
             <div class="stat-card">
-                <div class="stat-title">التردد الحالي</div>
+                <div class="stat-title">الاهتزاز الحالي</div>
                 <div class="stat-value" id="currentVib">-- <span style="font-size: 14px;">Hz</span></div>
             </div>
             <div class="stat-card">
@@ -268,11 +386,21 @@
             <button class="copy-btn" onclick="copyApiUrl()">نسخ</button>
         </div>
 
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <div class="action-buttons">
+            <div class="dropdown">
+                <button class="btn btn-pdf" onclick="toggleDropdown()">📄 تحميل تقرير PDF </button>
+                <div id="pdfDropdown" class="dropdown-content">
+                    <button onclick="generateMonthlyReport()"> تقرير شهري</button>
+                    <button onclick="generateYearlyReport()"> تقرير سنوي</button>
+                    <button onclick="generateFullReport()"> تقرير كامل</button>
+                </div>
+            </div>
             <button class="btn btn-primary" onclick="recalibrate()">إعادة معايرة</button>
             <button class="btn btn-danger" onclick="deleteBridge()">حذف الجسر</button>
         </div>
     </div>
+
+    <div id="reportContainer" class="report-container"></div>
 
     <script>
         const socket = io();
@@ -281,12 +409,12 @@
         
         let chart;
         let readings = [];
+        let bridgeData = {};
 
         if (!bridgeId) {
             window.location.href = '/';
         }
 
-        // إعداد الرسم البياني
         function initChart() {
             const ctx = document.getElementById('vibrationChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -306,20 +434,12 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'التردد (Hz)' }
-                        }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'التردد (Hz)' } } }
                 }
             });
         }
 
-        // استقبال البيانات المباشرة
         socket.on(`data-${bridgeId}`, (data) => {
             updateUI(data);
         });
@@ -350,13 +470,13 @@
             }
         });
 
-        // تحميل بيانات الجسر
         window.onload = function() {
             initChart();
             
             fetch(`/api/bridges/${bridgeId}`)
                 .then(res => res.json())
                 .then(data => {
+                    bridgeData = data;
                     document.getElementById('bridgeName').innerText = data.name;
                     
                     const apiUrl = `${window.location.protocol}//${window.location.hostname}/api/data/${bridgeId}`;
@@ -376,7 +496,6 @@
                             }
                         });
                         chart.update();
-                        
                         document.getElementById('readingsCount').innerText = readings.length;
                     }
                     
@@ -404,16 +523,10 @@
                     data.vibration.toFixed(4) + ' <span style="font-size: 14px;">Hz</span>';
             }
             
-            // عرض نسبة الخطورة
             if (data.riskPercent !== undefined) {
                 document.getElementById('riskPercent').innerHTML = data.riskPercent.toFixed(1) + ' %';
-                console.log("Displaying riskPercent:", data.riskPercent);
-            } else {
-                console.warn("riskPercent not found in data", data);
-                document.getElementById('riskPercent').innerHTML = '-- %';
             }
             
-            // تحديث شريط الحالة حسب التحذير
             const statusBadge = document.getElementById('statusBadge');
             if (data.alert === true) {
                 if (data.severity === 'critical') {
@@ -439,7 +552,6 @@
                 document.getElementById('calibrationCard').style.display = 'none';
             }
             
-            // تحديث الرسم البياني
             chart.data.labels.push(data.timeFormatted);
             chart.data.datasets[0].data.push(data.vibration);
             
@@ -453,12 +565,10 @@
 
         function updateStatus(status) {
             const badge = document.getElementById('statusBadge');
-            
             if (status === 'online') {
-                // لا نغير النص هنا لأنه يتغير حسب التحذير في updateUI
-                // فقط نضمن أن اللون أخضر إذا كان متصل
                 if (!badge.classList.contains('status-critical') && !badge.classList.contains('status-warning')) {
                     badge.className = 'status-badge status-online';
+                    badge.innerText = '✅ طبيعي';
                 }
             } else {
                 badge.className = 'status-badge status-offline';
@@ -468,7 +578,6 @@
 
         function addAlert(alert, playSound = true) {
             const list = document.getElementById('alertsList');
-            
             if (list.children[0]?.tagName === 'P') {
                 list.innerHTML = '';
             }
@@ -482,12 +591,228 @@
                 </div>
                 <div style="font-size: 12px; color: #999;">${alert.timeFormatted}</div>
             `;
-            
             list.insertBefore(div, list.firstChild);
-            
             if (list.children.length > 10) {
                 list.removeChild(list.lastChild);
             }
+        }
+
+        function toggleDropdown() {
+            document.getElementById("pdfDropdown").classList.toggle("show");
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.btn-pdf')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        async function getChartImage() {
+            const chartCanvas = document.getElementById('vibrationChart');
+            return chartCanvas.toDataURL('image/png');
+        }
+
+        async function generateMonthlyReport() {
+            const chartImage = await getChartImage();
+            const reportHTML = `
+                <div class="report-header">
+                    <h1> ${bridgeData.name || 'الجسر'}</h1>
+                    <p>تقرير شهري - ${new Date().toLocaleDateString('ar-SA')}</p>
+                    <p>${bridgeData.regionName || ''}</p>
+                </div>
+                
+                <div class="report-section">
+                    <h3>📊 الإحصائيات الأساسية</h3>
+                    <div class="report-stats">
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.readings?.length || 0}</div>
+                            <div>عدد القراءات</div>
+                        </div>
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.naturalFrequency ? bridgeData.naturalFrequency.toFixed(4) : '--'} Hz</div>
+                            <div>التردد الطبيعي</div>
+                        </div>
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.alerts?.length || 0}</div>
+                            <div>عدد الإنذارات</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="report-section">
+                    <h3>📈 الرسم البياني للاهتزازات</h3>
+                    <img src="${chartImage}" style="width: 100%; border-radius: 10px;">
+                </div>
+                
+                <div class="report-section">
+                    <h3>⚠️ الإنذارات</h3>
+                    <table class="report-table">
+                        <thead><tr><th>التاريخ</th><th>النوع</th><th>الاهتزاز</th></tr></thead>
+                        <tbody>
+                            ${bridgeData.alerts?.map(a => `
+                                <tr><td>${a.timeFormatted || a.timestamp}</td><td>${a.severity === 'critical' ? '🚨 خطر شديد' : '⚠️ تحذير'}</td><td>${a.vibration?.toFixed(4)} Hz</td></tr>
+                            `).join('') || '<tr><td colspan="3">لا توجد إنذارات</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="report-footer">
+                    تم إنشاء هذا التقرير بواسطة نظام مراقبة الجسور الذكي<br>
+                    ${window.location.origin}
+                </div>
+            `;
+            await generatePDF(reportHTML, 'تقرير_شهري_' + (bridgeData.name || 'الجسر'));
+            document.getElementById("pdfDropdown").classList.remove("show");
+        }
+
+        async function generateYearlyReport() {
+            const chartImage = await getChartImage();
+            const reportHTML = `
+                <div class="report-header">
+                    <h1> ${bridgeData.name || 'الجسر'}</h1>
+                    <p>تقرير سنوي - ${new Date().getFullYear()}</p>
+                    <p>${bridgeData.regionName || ''}</p>
+                </div>
+                
+                <div class="report-section">
+                    <h3>📊 إحصائيات سنوية</h3>
+                    <div class="report-stats">
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.readings?.length || 0}</div>
+                            <div>إجمالي القراءات</div>
+                        </div>
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.naturalFrequency ? bridgeData.naturalFrequency.toFixed(4) : '--'} Hz</div>
+                            <div>التردد الطبيعي</div>
+                        </div>
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.alerts?.length || 0}</div>
+                            <div>إجمالي الإنذارات</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="report-section">
+                    <h3>📈 الرسم البياني للاهتزازات</h3>
+                    <img src="${chartImage}" style="width: 100%; border-radius: 10px;">
+                </div>
+                
+                <div class="report-section">
+                    <h3>⚠️ الإنذارات</h3>
+                    <table class="report-table">
+                        <thead><tr><th>التاريخ</th><th>النوع</th><th>الاهتزاز</th></tr></thead>
+                        <tbody>
+                            ${bridgeData.alerts?.map(a => `
+                                <tr><td>${a.timeFormatted || a.timestamp}</td><td>${a.severity === 'critical' ? '🚨 خطر شديد' : '⚠️ تحذير'}</td><td>${a.vibration?.toFixed(4)} Hz</td></tr>
+                            `).join('') || '<tr><td colspan="3">لا توجد إنذارات</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="report-footer">
+                    تم إنشاء هذا التقرير بواسطة نظام مراقبة الجسور الذكي<br>
+                    ${window.location.origin}
+                </div>
+            `;
+            await generatePDF(reportHTML, 'تقرير_سنوي_' + (bridgeData.name || 'الجسر'));
+            document.getElementById("pdfDropdown").classList.remove("show");
+        }
+
+        async function generateFullReport() {
+            const chartImage = await getChartImage();
+            const reportHTML = `
+                <div class="report-header">
+                    <h1> ${bridgeData.name || 'الجسر'}</h1>
+                    <p>تقرير كامل - جميع البيانات</p>
+                    <p>${bridgeData.regionName || ''}</p>
+                    <p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}</p>
+                </div>
+                
+                <div class="report-section">
+                    <h3>ℹ️ معلومات الجسر</h3>
+                    <div class="report-stats">
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.naturalFrequency ? bridgeData.naturalFrequency.toFixed(4) : '--'} Hz</div>
+                            <div>التردد الطبيعي</div>
+                        </div>
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.readings?.length || 0}</div>
+                            <div>عدد القراءات</div>
+                        </div>
+                        <div class="report-stat-card">
+                            <div class="report-stat-value">${bridgeData.alerts?.length || 0}</div>
+                            <div>عدد الإنذارات</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="report-section">
+                    <h3>📈 الرسم البياني للاهتزازات</h3>
+                    <img src="${chartImage}" style="width: 100%; border-radius: 10px;">
+                </div>
+                
+                <div class="report-section">
+                    <h3>⚠️ جميع الإنذارات</h3>
+                    <table class="report-table">
+                        <thead><tr><th>التاريخ</th><th>النوع</th><th>الاهتزاز</th></tr></thead>
+                        <tbody>
+                            ${bridgeData.alerts?.map(a => `
+                                <tr><td>${a.timeFormatted || a.timestamp}</td><td>${a.severity === 'critical' ? '🚨 خطر شديد' : '⚠️ تحذير'}</td><td>${a.vibration?.toFixed(4)} Hz</td></tr>
+                            `).join('') || '<tr><td colspan="3">لا توجد إنذارات</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="report-footer">
+                    تم إنشاء هذا التقرير بواسطة نظام مراقبة الجسور الذكي<br>
+                    ${window.location.origin}
+                </div>
+            `;
+            await generatePDF(reportHTML, 'تقرير_كامل_' + (bridgeData.name || 'الجسر'));
+            document.getElementById("pdfDropdown").classList.remove("show");
+        }
+
+        async function generatePDF(htmlContent, filename) {
+            const reportContainer = document.getElementById('reportContainer');
+            reportContainer.innerHTML = htmlContent;
+            await new Promise(r => setTimeout(r, 200));
+            
+            const { jsPDF } = window.jspdf;
+            const element = reportContainer;
+            
+            try {
+                const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let pdf = new jsPDF('p', 'mm', 'a4');
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                if (imgHeight > pageHeight) {
+                    let remainingHeight = imgHeight - pageHeight;
+                    let currentPosition = -pageHeight;
+                    while (remainingHeight > 0) {
+                        pdf.addPage();
+                        currentPosition -= pageHeight;
+                        pdf.addImage(imgData, 'PNG', 0, currentPosition, imgWidth, imgHeight);
+                        remainingHeight -= pageHeight;
+                    }
+                }
+                pdf.save(`${filename}.pdf`);
+                alert('✅ تم تحميل التقرير بنجاح');
+            } catch (error) {
+                console.error('خطأ في إنشاء PDF:', error);
+                alert('❌ حدث خطأ في إنشاء التقرير');
+            }
+            reportContainer.innerHTML = '';
         }
 
         function copyApiUrl() {
@@ -496,6 +821,7 @@
             alert('✅ تم نسخ الرابط');
         }
 
+        // ✅ دوال حقيقية مرتبطة بالخادم
         function recalibrate() {
             if (confirm('هل تريد إعادة معايرة الجسر؟')) {
                 fetch(`/api/bridges/${bridgeId}/recalibrate`, { method: 'POST' })
@@ -504,7 +830,9 @@
                         chart.data.labels = [];
                         chart.data.datasets[0].data = [];
                         chart.update();
-                    });
+                        alert('✅ تم بدء إعادة المعايرة');
+                    })
+                    .catch(() => alert('❌ فشل إعادة المعايرة'));
             }
         }
 
@@ -513,10 +841,10 @@
                 fetch(`/api/bridges/${bridgeId}`, { method: 'DELETE' })
                     .then(() => {
                         window.location.href = '/';
-                    });
+                    })
+                    .catch(() => alert('❌ فشل حذف الجسر'));
             }
         }
     </script>
 </body>
 </html>
-
